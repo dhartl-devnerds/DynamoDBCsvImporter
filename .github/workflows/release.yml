@@ -1,0 +1,25 @@
+name: Remove Source Code Archives
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  remove_assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List Release Assets
+        id: list_assets
+        run: |
+          assets=$(gh release view ${{ github.event.release.tag_name }} --json assets --jq ".assets[].id")
+          echo "::set-output name=assets::$assets"
+          
+      - name: Remove Source Code Archives
+        if: success()
+        run: |
+          for asset_id in ${{ steps.list_assets.outputs.assets }}; do
+            asset_name=$(gh api "repos/${{ github.repository }}/releases/assets/$asset_id" --jq '.name')
+            if [[ "$asset_name" == *"source code"* ]]; then
+              gh release delete-asset $asset_id
+            fi
+          done
